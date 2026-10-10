@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.lower() == 'jeannmkt2@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActiveBuyer() {
+      return isSignedIn() && (
+        isAdmin() ||
+        getUserData().status == 'active'
+      );
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(userId) &&
+        request.resource.data.role == 'buyer' &&
+        request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.role == resource.data.role
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Batches Collection (Multi-Tenant Isolation)
+    match /batches/{batchId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isActiveBuyer() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid && isActiveBuyer()) || isAdmin()
+      );
+    }
+
+    // Plaques Collection
+    match /plaques/{plaqueId} {
+      // Public read required for dynamic QR code redirection /r/:id
+      allow read: if true;
+
+      // Creation allowed for active buyers within their own batches
+      allow create: if isActiveBuyer() && request.resource.data.userId == request.auth.uid;
+
+      // Update destination URL allowed for owner; scanCount increment allowed publicly
+      allow update: if (
+        (isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin())) ||
+        (
+          // Public scan counter increment
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScannedAt'])
+        )
+      );
+
+      allow delete: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid && isAdmin())
+      );
+    }
+
+    // Model Calibrations Collection
+    match /models/{modelId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // System Counters (Atomic sequence reservation)
+    match /system/counters {
+      allow read: if isSignedIn();
+      allow write: if isActiveBuyer() || isAdmin();
+    }
+  }
+}

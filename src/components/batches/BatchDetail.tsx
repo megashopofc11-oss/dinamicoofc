@@ -5,6 +5,7 @@ import { downloadBatchPdfA4, downloadBatchZip, downloadSinglePlaquePng, ExportPr
 import { renderPlaqueCanvas } from '../../services/renderer';
 import { PlaqueEditModal } from './PlaqueEditModal';
 import { formatDate, formatSequence } from '../../utils/formatters';
+import { BatchStack3DIcon, Layers3DIcon } from '../common/Icons3D';
 import {
   ArrowLeft,
   FileArchive,

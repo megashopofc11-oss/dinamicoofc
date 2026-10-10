@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import appletConfig from '../../firebase-applet-config.json';
 
 export interface FirebaseEnvConfig {
   apiKey?: string;
@@ -9,33 +10,26 @@ export interface FirebaseEnvConfig {
   storageBucket?: string;
   messagingSenderId?: string;
   appId?: string;
+  firestoreDatabaseId?: string;
 }
 
-// Read Vite client environment variables
-const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-const envAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
-const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'teste-c625b';
-const envStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
-const envMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
-const envAppId = import.meta.env.VITE_FIREBASE_APP_ID;
-
-// Check stored override in localStorage (allows runtime connection testing)
-const storedCustomConfig = (() => {
-  try {
-    const raw = localStorage.getItem('dinamico_pro_custom_firebase');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-})();
+// Read Vite client environment variables or use the provisioned applet config
+const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey;
+const envAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain;
+const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId;
+const envStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket;
+const envMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId;
+const envAppId = import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId;
+const databaseId = (appletConfig as any).firestoreDatabaseId || '(default)';
 
 export const firebaseConfig: FirebaseEnvConfig = {
-  apiKey: storedCustomConfig?.apiKey || envApiKey,
-  authDomain: storedCustomConfig?.authDomain || envAuthDomain,
-  projectId: storedCustomConfig?.projectId || envProjectId,
-  storageBucket: storedCustomConfig?.storageBucket || envStorageBucket,
-  messagingSenderId: storedCustomConfig?.messagingSenderId || envMessagingSenderId,
-  appId: storedCustomConfig?.appId || envAppId,
+  apiKey: envApiKey,
+  authDomain: envAuthDomain,
+  projectId: envProjectId,
+  storageBucket: envStorageBucket,
+  messagingSenderId: envMessagingSenderId,
+  appId: envAppId,
+  firestoreDatabaseId: databaseId,
 };
 
 export const isFirebaseConfigured: boolean = Boolean(
@@ -52,13 +46,24 @@ if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig as Record<string, string>) : getApps()[0];
     auth = getAuth(app);
-    db = getFirestore(app);
-    console.log('[DINÂMICO PRO] Firebase inicializado com sucesso para projeto:', firebaseConfig.projectId);
+    // Set local persistence so user session stays across refreshes
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn('[DINÂMICO PRO] Aviso ao definir persistência do Auth:', err);
+    });
+
+    // Connect to the specific provisioned Firestore database
+    if (databaseId && databaseId !== '(default)') {
+      db = getFirestore(app, databaseId);
+    } else {
+      db = getFirestore(app);
+    }
+    console.log('[DINÂMICO PRO] Firebase conectado com sucesso!', {
+      projectId: firebaseConfig.projectId,
+      databaseId: databaseId
+    });
   } catch (err) {
-    console.warn('[DINÂMICO PRO] Erro ao inicializar Firebase SDK:', err);
+    console.error('[DINÂMICO PRO] Erro ao inicializar Firebase SDK:', err);
   }
-} else {
-  console.info('[DINÂMICO PRO] Modo Local/Simulado ativo. Para conectar ao Firestore real, preencha as variáveis VITE_FIREBASE_* ou configure no Painel.');
 }
 
 export { app, auth, db };

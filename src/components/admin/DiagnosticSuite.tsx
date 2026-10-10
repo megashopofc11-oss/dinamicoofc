@@ -173,37 +173,45 @@ export const DiagnosticSuite: React.FC = () => {
           userId: 'test-user',
           modelId: 1,
           destinationUrl: 'https://dinamicopro.com/destino-valido',
-          permanentUrl: `http://localhost:3000/r/${testPlaqueId}`,
+          permanentUrl: `${window.location.origin}/r/${testPlaqueId}`,
           createdAt: Date.now(),
           updatedAt: Date.now()
         };
-        const allPlaques = JSON.parse(localStorage.getItem('dinamico_pro_plaques') || '[]');
-        localStorage.setItem('dinamico_pro_plaques', JSON.stringify([dummyPlaque, ...allPlaques]));
-        const resolved = await storageService.recordScanAndGetDestination(testPlaqueId);
+        // Persist to database
+        const { plaques } = await storageService.createBatch({
+          name: 'Lote Teste Redirecionamento',
+          userId: 'admin-master-uid',
+          userEmail: ADMIN_EMAIL,
+          modelId: 1,
+          modelName: OFFICIAL_MODELS[0].name,
+          quantity: 1
+        }, 'https://dinamicopro.com/destino-valido');
+        const createdPlaque = plaques[0];
+        const resolved = await storageService.recordScanAndGetDestination(createdPlaque.id);
         if (resolved !== 'https://dinamicopro.com/destino-valido') {
           throw new Error('Falha ao resolver URL de destino');
         }
         break;
       }
       case 9: { // Alteração do destino sem alterar QR
-        const testId = generatePlaqueId();
-        const originalUrl = `http://localhost:3000/r/${testId}`;
-        const p: Plaque = {
-          id: testId,
-          sequenceNumber: 1234,
-          formattedNumber: '001234',
-          batchId: 'batch-edit',
+        const { plaques } = await storageService.createBatch({
+          name: 'Lote Teste Mutação de Link',
           userId: 'admin-master-uid',
+          userEmail: ADMIN_EMAIL,
           modelId: 1,
-          destinationUrl: 'https://primeiro-destino.com',
-          permanentUrl: originalUrl,
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        };
-        const cur = JSON.parse(localStorage.getItem('dinamico_pro_plaques') || '[]');
-        localStorage.setItem('dinamico_pro_plaques', JSON.stringify([p, ...cur]));
-        const updated = await storageService.updatePlaqueDestination(testId, 'https://segundo-destino.com', 'admin-master-uid', true);
-        if (updated.permanentUrl !== originalUrl) throw new Error('A URL física do QR mudou!');
+          modelName: OFFICIAL_MODELS[0].name,
+          quantity: 1
+        }, 'https://primeiro-destino.com');
+        const targetP = plaques[0];
+        const originalPermanentUrl = targetP.permanentUrl;
+
+        const updated = await storageService.updatePlaqueDestination(
+          targetP.id,
+          'https://segundo-destino.com',
+          'admin-master-uid',
+          true
+        );
+        if (updated.permanentUrl !== originalPermanentUrl) throw new Error('A URL física do QR mudou!');
         if (updated.destinationUrl !== 'https://segundo-destino.com') throw new Error('Destino não foi alterado');
         break;
       }

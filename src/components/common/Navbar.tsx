@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../services/auth';
+import { BatchStack3DIcon, Layers3DIcon, AdminShield3DIcon } from './Icons3D';
 import {
-  Layers,
-  PlusCircle,
   Shield,
   Sliders,
   CheckCircle,
@@ -10,7 +9,6 @@ import {
   Ban,
   LogOut,
   User,
-  Zap,
   Menu,
   X,
   ExternalLink
@@ -29,130 +27,129 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLogin,
   onOpenRegister,
 }) => {
-  const { user, isAdmin, isActive, isPending, isBlocked, logout, switchUser } = useAuth();
+  const { user, isAdmin, isActive, isPending, isBlocked, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-800 bg-[#09090b]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-zinc-800/90 bg-[#09090b]/95 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo Brand */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('batches')}>
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-700 shadow-lg shadow-red-500/25 border border-red-400/30">
-              <Zap className="w-5 h-5 text-white animate-pulse" />
+        <div className="flex items-center justify-between h-20">
+          {/* Logo Brand with 3D High-Relief Badge */}
+          <div
+            className="flex items-center space-x-3.5 cursor-pointer group"
+            onClick={() => setActiveTab(isAdmin ? 'admin' : 'batches')}
+          >
+            <div className="relative">
+              <BatchStack3DIcon size={44} className="group-hover:scale-105 transition-transform duration-200" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-400 font-['Outfit']">
-                  DINÂMICO <span className="text-red-500 font-black">PRO</span>
+                <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
+                  DINÂMICO <span className="text-red-500 font-extrabold drop-shadow-[0_0_12px_rgba(239,68,68,0.6)]">PRO</span>
                 </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-wider">
-                  NFC • QR
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 uppercase tracking-widest">
+                  NFC 3D
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 hidden sm:block">Plaquinhas Inteligentes 10×10 cm</p>
+              <p className="text-[11px] text-zinc-400 hidden sm:block font-medium">Plaquinhas Inteligentes 10×10 cm</p>
             </div>
           </div>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-            <button
-              onClick={() => setActiveTab('generator')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'generator'
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800/60'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Gerar Lote</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('batches')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'batches'
-                  ? 'bg-zinc-800 text-white border border-zinc-700 shadow-md'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800/60'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Meus Lotes</span>
-            </button>
-
-            {isAdmin && (
-              <>
+          {/* Desktop Nav Navigation */}
+          {user && (
+            <nav className="hidden md:flex items-center space-x-2 lg:space-x-3">
+              {/* Gerar Lote with 3D Button Styling */}
+              {isActive && (
                 <button
-                  onClick={() => setActiveTab('admin')}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'admin'
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-sm'
-                      : 'text-zinc-300 hover:text-red-400 hover:bg-zinc-800/60'
+                  onClick={() => setActiveTab('generator')}
+                  className={`flex items-center space-x-2.5 px-4 py-2.5 rounded-xl text-xs font-extrabold tracking-wider transition-all ${
+                    activeTab === 'generator'
+                      ? 'btn-3d-red text-white shadow-xl shadow-red-500/25 ring-1 ring-red-400'
+                      : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/80'
                   }`}
                 >
-                  <Shield className="w-4 h-4 text-red-400" />
-                  <span>Painel Admin</span>
+                  <BatchStack3DIcon size={20} />
+                  <span>GERAR LOTE</span>
                 </button>
+              )}
 
+              {/* Meus Lotes */}
+              {isActive && (
                 <button
-                  onClick={() => setActiveTab('calibration')}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'calibration'
-                      ? 'bg-zinc-800 text-red-400 border border-red-500/30'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+                  onClick={() => setActiveTab('batches')}
+                  className={`flex items-center space-x-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    activeTab === 'batches'
+                      ? 'bg-zinc-800 text-white border border-zinc-700 shadow-md'
+                      : 'text-zinc-300 hover:text-white hover:bg-zinc-900'
                   }`}
                 >
-                  <Sliders className="w-4 h-4" />
-                  <span>Calibração dos 8 Modelos</span>
+                  <Layers3DIcon size={18} />
+                  <span>Meus Lotes</span>
                 </button>
-              </>
-            )}
+              )}
 
-            <button
-              onClick={() => setActiveTab('diagnostics')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'diagnostics'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800/60'
-              }`}
-              title="Testes e Diagnósticos do Sistema"
-            >
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Diagnósticos</span>
-            </button>
-          </nav>
+              {/* Admin Panel Link */}
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('admin')}
+                    className={`flex items-center space-x-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'admin'
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-sm'
+                        : 'text-zinc-300 hover:text-red-400 hover:bg-zinc-900'
+                    }`}
+                  >
+                    <AdminShield3DIcon size={18} />
+                    <span>Painel Admin</span>
+                  </button>
 
-          {/* User Profile & Auth Actions */}
+                  <button
+                    onClick={() => setActiveTab('calibration')}
+                    className={`flex items-center space-x-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      activeTab === 'calibration'
+                        ? 'bg-zinc-800 text-red-400 border border-red-500/30'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                    }`}
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Calibração</span>
+                  </button>
+                </>
+              )}
+            </nav>
+          )}
+
+          {/* User Profile & Auth Status */}
           <div className="flex items-center space-x-3">
             {user ? (
               <div className="relative">
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all text-left"
+                  className="flex items-center space-x-3 px-3.5 py-2 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 transition-all text-left shadow-md"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-zinc-700 to-zinc-800 flex items-center justify-center text-xs font-bold text-white border border-zinc-600">
-                    {user.displayName?.charAt(0).toUpperCase() || 'U'}
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zinc-800 to-zinc-700 flex items-center justify-center text-xs font-bold text-white border border-zinc-600 shadow-inner">
+                    {user.displayName?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left">
-                    <p className="text-xs font-semibold text-white leading-tight truncate max-w-[120px]">
-                      {user.displayName || user.email}
+                    <p className="text-xs font-bold text-white leading-tight truncate max-w-[140px]">
+                      {user.displayName || user.email.split('@')[0]}
                     </p>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-1 mt-0.5">
                       {isAdmin ? (
-                        <span className="text-[10px] text-red-400 font-bold flex items-center">
-                          <Shield className="w-2.5 h-2.5 mr-0.5" /> Administrador
+                        <span className="text-[10px] text-red-400 font-extrabold flex items-center">
+                          <Shield className="w-2.5 h-2.5 mr-0.5" /> Admin Master
                         </span>
                       ) : isActive ? (
-                        <span className="text-[10px] text-emerald-400 font-medium flex items-center">
-                          <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Comprador Ativo
+                        <span className="text-[10px] text-emerald-400 font-semibold flex items-center">
+                          <CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Aprovado
                         </span>
                       ) : isPending ? (
-                        <span className="text-[10px] text-amber-400 font-medium flex items-center">
-                          <Clock className="w-2.5 h-2.5 mr-0.5" /> Aguardando Aprovação
+                        <span className="text-[10px] text-amber-400 font-semibold flex items-center">
+                          <Clock className="w-2.5 h-2.5 mr-0.5" /> Pendente
                         </span>
                       ) : (
-                        <span className="text-[10px] text-rose-500 font-medium flex items-center">
+                        <span className="text-[10px] text-rose-500 font-semibold flex items-center">
                           <Ban className="w-2.5 h-2.5 mr-0.5" /> Bloqueado
                         </span>
                       )}
@@ -162,56 +159,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 {/* Dropdown Menu */}
                 {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-xl bg-[#121217] border border-zinc-800 shadow-2xl p-2 z-50 text-sm">
-                    <div className="px-3 py-2 border-b border-zinc-800">
-                      <p className="text-xs text-zinc-400">Conectado como:</p>
-                      <p className="font-semibold text-white truncate">{user.email}</p>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">UID: {user.uid.substring(0, 14)}...</p>
-                    </div>
-
-                    {/* Quick Profile Switcher for Testing / Verification */}
-                    <div className="py-2 px-3 border-b border-zinc-800/80">
-                      <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                        Testar Papéis (Simulador):
-                      </p>
-                      <div className="grid grid-cols-1 gap-1">
-                        <button
-                          onClick={() => {
-                            switchUser('admin');
-                            setProfileDropdownOpen(false);
-                          }}
-                          className={`text-left text-xs px-2 py-1.5 rounded flex items-center justify-between ${
-                            isAdmin ? 'bg-red-500/20 text-red-400 font-bold' : 'hover:bg-zinc-800 text-zinc-300'
-                          }`}
-                        >
-                          <span>Admin (jeannmkt2@gmail.com)</span>
-                          {isAdmin && <CheckCircle className="w-3 h-3 text-red-400" />}
-                        </button>
-                        <button
-                          onClick={() => {
-                            switchUser('buyer_active');
-                            setProfileDropdownOpen(false);
-                          }}
-                          className={`text-left text-xs px-2 py-1.5 rounded flex items-center justify-between ${
-                            isActive && !isAdmin ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'hover:bg-zinc-800 text-zinc-300'
-                          }`}
-                        >
-                          <span>Comprador Ativo (Aprovado)</span>
-                          {isActive && !isAdmin && <CheckCircle className="w-3 h-3 text-emerald-400" />}
-                        </button>
-                        <button
-                          onClick={() => {
-                            switchUser('buyer_pending');
-                            setProfileDropdownOpen(false);
-                          }}
-                          className={`text-left text-xs px-2 py-1.5 rounded flex items-center justify-between ${
-                            isPending ? 'bg-amber-500/20 text-amber-400 font-bold' : 'hover:bg-zinc-800 text-zinc-300'
-                          }`}
-                        >
-                          <span>Comprador Pendente</span>
-                          {isPending && <CheckCircle className="w-3 h-3 text-amber-400" />}
-                        </button>
-                      </div>
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-[#121217] border border-zinc-800 shadow-2xl p-2.5 z-50 text-xs">
+                    <div className="px-3 py-2.5 border-b border-zinc-800/80">
+                      <p className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Conta Conectada</p>
+                      <p className="font-bold text-white truncate text-xs mt-0.5">{user.email}</p>
+                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">UID: {user.uid.substring(0, 12)}...</p>
                     </div>
 
                     <button
@@ -219,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         logout();
                         setProfileDropdownOpen(false);
                       }}
-                      className="w-full mt-1 flex items-center space-x-2 px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all"
+                      className="w-full mt-1.5 flex items-center space-x-2 px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-500/10 font-bold transition-all"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Sair da Conta</span>
@@ -231,15 +183,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={onOpenLogin}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-all"
+                  className="px-4 py-2 text-xs font-bold text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-all"
                 >
                   Entrar
                 </button>
                 <button
                   onClick={onOpenRegister}
-                  className="btn-3d-red px-3.5 py-1.5 text-xs font-bold text-white rounded-lg transition-all"
+                  className="btn-3d-red px-4 py-2 text-xs font-extrabold text-white rounded-xl shadow-lg transition-all"
                 >
-                  Cadastrar
+                  Criar Conta
                 </button>
               </div>
             )}
@@ -257,71 +209,65 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-zinc-800 bg-[#0c0c10] px-4 pt-2 pb-4 space-y-2">
-          <button
-            onClick={() => {
-              setActiveTab('generator');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold ${
-              activeTab === 'generator' ? 'bg-red-600 text-white' : 'text-zinc-300 hover:bg-zinc-800'
-            }`}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Gerar Lote de Plaquinhas</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('batches');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold ${
-              activeTab === 'batches' ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-800'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Meus Lotes</span>
-          </button>
-          {isAdmin && (
+        <div className="md:hidden border-t border-zinc-800 bg-[#0c0c10] px-4 pt-3 pb-5 space-y-2">
+          {user && isActive && (
+            <>
+              <button
+                onClick={() => {
+                  setActiveTab('generator');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-extrabold tracking-wider ${
+                  activeTab === 'generator' ? 'btn-3d-red text-white' : 'text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                <BatchStack3DIcon size={20} />
+                <span>GERAR LOTE DE PLAQUINHAS</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('batches');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold ${
+                  activeTab === 'batches' ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                <Layers3DIcon size={18} />
+                <span>Meus Lotes</span>
+              </button>
+            </>
+          )}
+
+          {user && isAdmin && (
             <>
               <button
                 onClick={() => {
                   setActiveTab('admin');
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold ${
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold ${
                   activeTab === 'admin' ? 'bg-red-500/20 text-red-400' : 'text-zinc-300 hover:bg-zinc-800'
                 }`}
               >
-                <Shield className="w-4 h-4 text-red-400" />
+                <AdminShield3DIcon size={18} />
                 <span>Painel Administrativo</span>
               </button>
+
               <button
                 onClick={() => {
                   setActiveTab('calibration');
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold ${
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold ${
                   activeTab === 'calibration' ? 'bg-zinc-800 text-red-400' : 'text-zinc-300 hover:bg-zinc-800'
                 }`}
               >
                 <Sliders className="w-4 h-4" />
-                <span>Calibração dos Modelos</span>
+                <span>Calibração dos 8 Modelos</span>
               </button>
             </>
           )}
-          <button
-            onClick={() => {
-              setActiveTab('diagnostics');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold ${
-              activeTab === 'diagnostics' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-400 hover:bg-zinc-800'
-            }`}
-          >
-            <CheckCircle className="w-4 h-4 text-emerald-400" />
-            <span>Testes & Diagnósticos</span>
-          </button>
         </div>
       )}
     </header>

@@ -4,6 +4,7 @@ import { storageService } from '../../services/storage';
 import { downloadBatchPdfA4, downloadBatchZip, ExportProgress } from '../../services/exporter';
 import { Batch, ModelCalibration, Plaque } from '../../types';
 import { formatDate, formatSequence } from '../../utils/formatters';
+import { BatchStack3DIcon, Layers3DIcon } from '../common/Icons3D';
 import {
   Layers,
   FileArchive,
@@ -157,22 +158,21 @@ export const BatchList: React.FC<BatchListProps> = ({
       {loading ? (
         <div className="text-center py-16 space-y-3">
           <div className="w-8 h-8 border-3 border-red-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-zinc-400">Carregando seus lotes...</p>
         </div>
       ) : filteredBatches.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl bg-zinc-950/40 border border-zinc-800/80 p-8 space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center text-zinc-600 mx-auto">
-            <Layers className="w-7 h-7" />
+        <div className="text-center py-20 rounded-3xl bg-[#121217]/50 border border-zinc-800/80 p-8 space-y-5">
+          <div className="flex justify-center">
+            <BatchStack3DIcon size={64} />
           </div>
-          <h3 className="text-lg font-bold text-white">Nenhum lote encontrado</h3>
-          <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-            Você ainda não gerou nenhum lote de plaquinhas. Comece agora escolhendo um dos 8 modelos oficiais!
+          <h3 className="text-xl font-bold text-white font-['Outfit']">Nenhum lote gerado ainda</h3>
+          <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+            Você ainda não criou nenhum lote de plaquinhas. Escolha um dos 8 modelos oficiais e inicie sua primeira tiragem com QR Codes dinâmicos!
           </p>
           <button
             onClick={onGoToGenerator}
-            className="btn-3d-red px-5 py-2.5 rounded-xl text-white font-bold text-xs inline-flex items-center space-x-2"
+            className="btn-3d-red px-6 py-3 rounded-2xl text-white font-bold text-xs inline-flex items-center space-x-2 shadow-xl"
           >
-            <PlusCircle className="w-4 h-4" />
+            <BatchStack3DIcon size={18} />
             <span>Gerar Meu Primeiro Lote</span>
           </button>
         </div>

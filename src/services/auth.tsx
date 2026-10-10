@@ -8,11 +8,14 @@ import {
   createUserWithEmailAndPassword,
   signOut as fbSignOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
+  updateProfile,
   User as FirebaseUser
 } from 'firebase/auth';
 
 interface AuthContextType {
   user: UserProfile | null;
+  firebaseUser: FirebaseUser | null;
   loading: boolean;
   isAdmin: boolean;
   isActive: boolean;
@@ -20,61 +23,77 @@ interface AuthContextType {
   isBlocked: boolean;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, pass: string, name: string, businessName?: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  switchUser: (role: 'admin' | 'buyer_active' | 'buyer_pending') => void;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ACTIVE_SESSION_KEY = 'dinamico_pro_active_session_uid';
+function translateFirebaseError(error: any): string {
+  const code = error?.code || '';
+  switch (code) {
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'E-mail ou senha incorretos.';
+    case 'auth/email-already-in-use':
+      return 'Este e-mail já está cadastrado no sistema.';
+    case 'auth/weak-password':
+      return 'A senha é muito fraca. Utilize pelo menos 6 caracteres.';
+    case 'auth/invalid-email':
+      return 'Formato de e-mail inválido.';
+    case 'auth/too-many-requests':
+      return 'Muitas tentativas sem sucesso. Aguarde alguns instantes.';
+    case 'auth/network-request-failed':
+      return 'Erro de conexão com a internet. Verifique sua rede.';
+    default:
+      return error?.message || 'Falha ao autenticar.';
+  }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Load active session from storage or Firebase
-  const loadUserFromUid = async (uid: string) => {
+  const loadUserProfile = async (uid: string, email: string) => {
     try {
-      const profile = await storageService.getUserProfile(uid);
-      if (profile) {
-        // Enforce super admin rule
-        if (profile.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-          profile.role = 'admin';
-          profile.status = 'active';
-        }
-        setUser(profile);
-      } else {
-        setUser(null);
+      let profile = await storageService.getUserProfile(uid);
+      const isMasterAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+      if (!profile) {
+        // Auto-initialize profile in Firestore if absent
+        profile = {
+          uid,
+          email,
+          displayName: email.split('@')[0],
+          role: isMasterAdmin ? 'admin' : 'buyer',
+          status: isMasterAdmin ? 'active' : 'pending',
+          createdAt: Date.now(),
+          approvedAt: isMasterAdmin ? Date.now() : undefined,
+          approvedBy: isMasterAdmin ? 'SISTEMA_MASTER' : undefined
+        };
+        await storageService.saveUserProfile(profile);
+      } else if (isMasterAdmin && (profile.role !== 'admin' || profile.status !== 'active')) {
+        // Enforce master admin privilege
+        profile.role = 'admin';
+        profile.status = 'active';
+        await storageService.saveUserProfile(profile);
       }
-    } catch (e) {
-      console.error('Erro ao carregar usuário:', e);
-      setUser(null);
-    } finally {
-      setLoading(false);
+
+      setUser(profile);
+    } catch (err) {
+      console.error('[DINÂMICO PRO] Erro ao carregar perfil do Firestore:', err);
     }
   };
 
   useEffect(() => {
     if (isFirebaseConfigured && firebaseAuth) {
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser: FirebaseUser | null) => {
-        if (fbUser) {
-          let profile = await storageService.getUserProfile(fbUser.uid);
-          if (!profile) {
-            // First time Firebase user
-            const isAdm = fbUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-            profile = {
-              uid: fbUser.uid,
-              email: fbUser.email || '',
-              displayName: fbUser.displayName || fbUser.email?.split('@')[0],
-              role: isAdm ? 'admin' : 'buyer',
-              status: isAdm ? 'active' : 'pending',
-              createdAt: Date.now(),
-              approvedAt: isAdm ? Date.now() : undefined,
-            };
-            await storageService.saveUserProfile(profile);
-          }
-          setUser(profile);
+        setFirebaseUser(fbUser);
+        if (fbUser && fbUser.email) {
+          await loadUserProfile(fbUser.uid, fbUser.email);
         } else {
           setUser(null);
         }
@@ -82,9 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return () => unsubscribe();
     } else {
-      // Local session initialization
-      const storedUid = localStorage.getItem(ACTIVE_SESSION_KEY) || 'admin-master-uid';
-      loadUserFromUid(storedUid);
+      // If Firebase SDK is not configured yet
+      setLoading(false);
     }
   }, []);
 
@@ -92,44 +110,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
-    if (isFirebaseConfigured && firebaseAuth) {
-      try {
-        const cred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, pass);
-        await loadUserFromUid(cred.user.uid);
-        return { success: true };
-      } catch (err: any) {
-        setLoading(false);
-        return { success: false, error: err.message || 'Falha na autenticação.' };
-      }
+    if (!firebaseAuth) {
+      setLoading(false);
+      return { success: false, error: 'Firebase Auth não inicializado.' };
     }
 
-    // Local authentication fallback
-    const allUsers = await storageService.getAllUsers();
-    let found = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-
-    if (!found) {
-      // If user logs in with admin email and doesn't exist yet, auto create
-      if (cleanEmail === ADMIN_EMAIL.toLowerCase()) {
-        found = {
-          uid: 'admin-master-uid',
-          email: ADMIN_EMAIL,
-          displayName: 'Administrador Master',
-          role: 'admin',
-          status: 'active',
-          createdAt: Date.now(),
-          approvedAt: Date.now(),
-        };
-        await storageService.saveUserProfile(found);
-      } else {
-        setLoading(false);
-        return { success: false, error: 'Usuário não encontrado com este e-mail.' };
-      }
+    try {
+      const cred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, pass);
+      setFirebaseUser(cred.user);
+      await loadUserProfile(cred.user.uid, cleanEmail);
+      setLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      setLoading(false);
+      return { success: false, error: translateFirebaseError(err) };
     }
-
-    localStorage.setItem(ACTIVE_SESSION_KEY, found.uid);
-    setUser(found);
-    setLoading(false);
-    return { success: true };
   };
 
   const register = async (
@@ -142,86 +137,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
     const isMasterAdmin = cleanEmail === ADMIN_EMAIL.toLowerCase();
 
-    if (isFirebaseConfigured && firebaseAuth) {
-      try {
-        const cred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, pass);
-        const profile: UserProfile = {
-          uid: cred.user.uid,
-          email: cleanEmail,
-          displayName: name,
-          businessName: businessName || '',
-          role: isMasterAdmin ? 'admin' : 'buyer',
-          status: isMasterAdmin ? 'active' : 'pending',
-          createdAt: Date.now(),
-          approvedAt: isMasterAdmin ? Date.now() : undefined,
-        };
-        await storageService.saveUserProfile(profile);
-        setUser(profile);
-        return { success: true };
-      } catch (err: any) {
-        setLoading(false);
-        return { success: false, error: err.message || 'Falha ao cadastrar conta.' };
-      }
-    }
-
-    // Local registration
-    const allUsers = await storageService.getAllUsers();
-    if (allUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
+    if (!firebaseAuth) {
       setLoading(false);
-      return { success: false, error: 'Este e-mail já está cadastrado no sistema.' };
+      return { success: false, error: 'Firebase Auth não inicializado.' };
     }
 
-    const newUid = `user-${Date.now().toString(36)}`;
-    const newProfile: UserProfile = {
-      uid: newUid,
-      email: cleanEmail,
-      displayName: name,
-      businessName: businessName || '',
-      role: isMasterAdmin ? 'admin' : 'buyer',
-      status: isMasterAdmin ? 'active' : 'pending',
-      createdAt: Date.now(),
-      approvedAt: isMasterAdmin ? Date.now() : undefined,
-    };
+    try {
+      const cred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, pass);
+      await updateProfile(cred.user, { displayName: name });
+      setFirebaseUser(cred.user);
 
-    await storageService.saveUserProfile(newProfile);
-    localStorage.setItem(ACTIVE_SESSION_KEY, newUid);
-    setUser(newProfile);
-    setLoading(false);
-    return { success: true };
+      // Create profile in Firestore with initial status 'pending' (or 'active' if master admin)
+      const profile: UserProfile = {
+        uid: cred.user.uid,
+        email: cleanEmail,
+        displayName: name,
+        businessName: businessName || '',
+        role: isMasterAdmin ? 'admin' : 'buyer',
+        status: isMasterAdmin ? 'active' : 'pending',
+        createdAt: Date.now(),
+        approvedAt: isMasterAdmin ? Date.now() : undefined,
+        approvedBy: isMasterAdmin ? 'SISTEMA_MASTER' : undefined
+      };
+
+      await storageService.saveUserProfile(profile);
+      setUser(profile);
+      setLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      setLoading(false);
+      return { success: false, error: translateFirebaseError(err) };
+    }
+  };
+
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!firebaseAuth) return { success: false, error: 'Firebase Auth não inicializado.' };
+    try {
+      await sendPasswordResetEmail(firebaseAuth, email.trim().toLowerCase());
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: translateFirebaseError(err) };
+    }
   };
 
   const logout = async (): Promise<void> => {
-    if (isFirebaseConfigured && firebaseAuth) {
+    if (firebaseAuth) {
       await fbSignOut(firebaseAuth);
     }
-    localStorage.removeItem(ACTIVE_SESSION_KEY);
     setUser(null);
-  };
-
-  // Helper for testing: quick switch between Admin, Active Buyer, Pending Buyer
-  const switchUser = async (role: 'admin' | 'buyer_active' | 'buyer_pending') => {
-    setLoading(true);
-    const allUsers = await storageService.getAllUsers();
-    let target: UserProfile | undefined;
-
-    if (role === 'admin') {
-      target = allUsers.find((u) => u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-    } else if (role === 'buyer_active') {
-      target = allUsers.find((u) => u.role === 'buyer' && u.status === 'active');
-    } else if (role === 'buyer_pending') {
-      target = allUsers.find((u) => u.status === 'pending');
-    }
-
-    if (target) {
-      localStorage.setItem(ACTIVE_SESSION_KEY, target.uid);
-      setUser(target);
-    }
-    setLoading(false);
+    setFirebaseUser(null);
   };
 
   const refreshUser = async () => {
-    if (user) {
-      await loadUserFromUid(user.uid);
+    if (firebaseUser && firebaseUser.email) {
+      await loadUserProfile(firebaseUser.uid, firebaseUser.email);
     }
   };
 
@@ -234,6 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
+        firebaseUser,
         loading,
         isAdmin: Boolean(isAdmin),
         isActive: Boolean(isActive),
@@ -241,8 +211,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isBlocked: Boolean(isBlocked),
         login,
         register,
+        resetPassword,
         logout,
-        switchUser,
         refreshUser
       }}
     >
